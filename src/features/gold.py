@@ -39,10 +39,14 @@ def build_gold_features():
     if "poi_density" in poi.columns:
         gold = gold.merge(poi[["Outlet_ID", "poi_density"]], on="Outlet_ID", how="left")
     
-    gold = gold.dropna(subset=["Target_Volume"]).fillna(0)
+    gold = gold.dropna(subset=["Target_Volume"])
     
     # Map types
     gold["Outlet_Type"] = gold["Outlet_Type"].astype(str)
+    gold["Outlet_Size"] = gold["Outlet_Size"].astype(str)
+    
+    numeric_cols = gold.select_dtypes(include=[np.number]).columns
+    gold[numeric_cols] = gold[numeric_cols].fillna(0)
     
     write_deltalake(str(GOLD_DIR), gold, mode="overwrite")
     print(f"[GOLD] Features built. {len(gold)} monthly records prepared for modeling.")

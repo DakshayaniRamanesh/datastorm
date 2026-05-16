@@ -19,7 +19,7 @@ def build_poi_features():
     df = DeltaTable(coords_path).to_pandas()
     
     df["h3_index"] = df.apply(
-        lambda row: h3.geo_to_h3(row["Latitude"], row["Longitude"], H3_RESOLUTION),
+        lambda row: h3.latlng_to_cell(row["Latitude"], row["Longitude"], H3_RESOLUTION),
         axis=1
     )
     

@@ -56,8 +56,8 @@ def train_and_predict():
         
         train_data = lgb.Dataset(X_train, label=y_train)
         
-        params = {'learning_rate': 0.05, 'max_depth': 6, 'verbose': -1}
-        model = lgb.train(params, train_data, num_boost_round=50, fobj=lgbm_tobit_obj)
+        params = {'learning_rate': 0.05, 'max_depth': 6, 'verbose': -1, 'objective': lgbm_tobit_obj}
+        model = lgb.train(params, train_data, num_boost_round=50)
         
         preds = model.predict(X_test)
         rmse = np.sqrt(np.mean((y_test - preds)**2))
@@ -69,7 +69,7 @@ def train_and_predict():
         return custom_asymmetric_objective(labels, preds, censored.values)
         
     train_data_all = lgb.Dataset(X, label=y)
-    final_model = lgb.train({'learning_rate': 0.05, 'max_depth': 6, 'verbose': -1}, train_data_all, num_boost_round=100, fobj=lgbm_tobit_obj_all)
+    final_model = lgb.train({'learning_rate': 0.05, 'max_depth': 6, 'verbose': -1, 'objective': lgbm_tobit_obj_all}, train_data_all, num_boost_round=100)
     
     last_month = df.groupby("Outlet_ID").tail(1)
     preds_jan_2026 = final_model.predict(last_month[features])
