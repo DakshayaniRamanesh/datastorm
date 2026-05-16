@@ -1,55 +1,38 @@
-# DataStorm 2026: Latent Monthly Purchase Potential Prediction
+# DataStorm v7.0 Pipeline
 
-## Team: Antigravity
+This repository implements a rigorous, industry-standard Lakehouse architecture to solve the Latent Potential challenge for Data Storm v7.0.
 
-This repository contains the end-to-end analytical pipeline designed to predict the **Maximum Monthly Purchase Potential** (in liters) for 20,000 traditional retail outlets in Sri Lanka for January 2026.
+## Architecture
 
-### 1. Project Overview
-Our framework shifts from historical-based allocation to **Potential-Based Allocation**. We address the "hidden variable" problem of latent demand by identifying systemic constraints (censoring) and applying a logically defensible "uncapping" methodology.
-
-### 2. Repository Structure
-The codebase follows a standard Data Lakehouse architecture:
-- `pipeline/bronze/`: Raw ingestion (CSV to Parquet).
-- `pipeline/silver/`: Cleaned and sanitized datasets with a robust DQ framework.
-- `pipeline/gold/`: Feature engineering and the "Latent Potential" estimation model.
-- `pipeline/rejected/`: Quarantined records that failed DQ checks.
-- `pipeline/poi_cache/`: Cached geospatial data from OpenStreetMap.
-- `output/`: Final predictions and EDA visualizations.
-- `run_pipeline.py`: Master script to execute the entire pipeline end-to-end.
-
-### 3. Setup and Usage
-
-#### Prerequisites
-- Python 3.10+
-- Required libraries: `pandas`, `numpy`, `scipy`, `matplotlib`, `pyarrow`, `requests`, `overpy`
-
-To install dependencies:
-```bash
-pip install pandas numpy scipy matplotlib pyarrow requests overpy
+```mermaid
+graph TD
+    A[Raw CSVs] -->|bronze.py| B(Bronze: DeltaLake)
+    B -->|silver.py| C{Pydantic Validation}
+    C -->|Invalid| D[data/rejected/]
+    C -->|Valid| E(Silver: DeltaLake)
+    E -->|poi.py| F(H3 POI Index)
+    E -->|gold.py| G(Gold Features)
+    F --> G
+    G -->|tobit_lgbm.py| H[LGBM + Custom Tobit Loss]
+    H --> I[output/DataStorm_predictions.csv]
 ```
 
-#### Running the Pipeline
-To run the full pipeline (Bronze -> Silver -> Gold -> EDA):
+## Key Improvements (Addressing Review Feedback)
+1. **Repository Structure**: Transformation logic abstracted away from notebooks into specialized source folders (`src/data_engineering/`, `src/features/`, `src/models/`). Uses `main.py`.
+2. **ACID-Compliant Lakehouse**: File storage refactored to use Delta Lake (`deltalake` package).
+3. **Data Quality Quarantine**: Pydantic schemas screen raw inputs and automatically route invalid entries to `data/rejected/` with validation error logs.
+4. **Censored Demand Modeling**: Replaced standard regression with a Tobit-inspired custom asymmetric objective function in LightGBM to handle right-censored capacity limits.
+5. **Data Leakage Fix**: Replaced random K-Fold splits with `TimeSeriesSplit`.
+6. **Spatial Indexing**: O(N*M) spatial joints replaced with fast Uber H3 discrete grid indexing.
+7. **Testing**: `pytest` structures added.
+
+## Execution
 ```bash
-python run_pipeline.py
+pip install -r requirements.txt
+python main.py
+pytest tests/
 ```
 
-To run with **live POI scraping** (Note: this is slow as it hits the Overpass API):
-```bash
-python run_pipeline.py --poi
-```
-Or run a sample POI scrape:
-```bash
-python run_pipeline.py --poi-sample 200
-```
-
-### 4. Methodology Highlights
-- **Data Forensics**: We implemented a reusable DQ framework to trap system anomalies such as negative volumes, extreme outliers, and GPS dropouts.
-- **Censored Demand Modeling**: We utilized a 5-signal composite score to detect outlets hitting supply or credit ceilings (Plateau detection, Distributor Cap proxy, Inter-year stagnation, CV Scoring, and Q4 Suppression).
-- **POI Integration**: Catchment drivers (schools, bus stands, hospitals, etc.) were scraped via the Overpass API and used as potential multipliers.
-- **SFA Proxy**: Stochastic Frontier Analysis logic was used to calculate the efficiency gap between an outlet and its top-performing peers.
-
-### 5. Final Output
-The final predictions are saved to `output/DataStorm_predictions.csv`.
-- `Outlet_ID`: Unique identifier for the outlet.
-- `Maximum_Monthly_Liters`: Predicted latent potential for January 2026.
+## AI Utilization Transparency
+- **AI Code Synthesis**: LLMs were used to automate boilerplate code generation for Pydantic schemas and LightGBM model structures. All AI-generated code was validated using automated unit-tests (`pytest`).
+- **Prompt Parameters**: Instructed to strictly adhere to the PEP8 standard, use TimeSeriesSplit for temporal boundaries, and apply a custom Tobit loss objective.

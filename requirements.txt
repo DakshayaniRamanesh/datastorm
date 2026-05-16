@@ -1,0 +1,8 @@
+pandas
+numpy
+pydantic
+deltalake
+h3
+lightgbm
+scikit-learn
+pytest

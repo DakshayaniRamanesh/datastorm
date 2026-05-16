@@ -1,39 +1,39 @@
 BRONZE LAYER - Schema Snapshot
-Generated: 2026-05-16 16:04:25
+Generated: 2026-05-16 20:35:09
 ============================================================
 
 [transactions]  (2,376,389 rows)
   Columns (7):
-    Outlet_ID                                object
+    Outlet_ID                                str
     Year                                     int64
     Month                                    int64
-    Distributor_ID                           object
-    SKU_ID                                   object
+    Distributor_ID                           str
+    SKU_ID                                   str
     Volume_Liters                            float64
     Total_Bill_Value                         float64
 
 [outlet_master]  (20,000 rows)
   Columns (4):
-    Outlet_ID                                object
-    Outlet_Size                              object
+    Outlet_ID                                str
+    Outlet_Size                              str
     Cooler_Count                             int64
-    Outlet_Type                              object
+    Outlet_Type                              str
 
 [outlet_coordinates]  (20,000 rows)
   Columns (3):
-    Outlet_ID                                object
+    Outlet_ID                                str
     Latitude                                 float64
     Longitude                                float64
 
 [distributor_seasonality]  (360 rows)
   Columns (4):
-    Distributor_ID                           object
+    Distributor_ID                           str
     Year                                     int64
     Month                                    int64
-    Seasonality_Index                        object
+    Seasonality_Index                        str
 
 [holiday_list]  (349 rows)
   Columns (3):
-    Date                                     object
-    Holiday_Name                             object
-    Holiday_Type                             object
+    Date                                     str
+    Holiday_Name                             str
+    Holiday_Type                             str
