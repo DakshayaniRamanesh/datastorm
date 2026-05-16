@@ -44,6 +44,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from scipy import stats
+from scipy.spatial import KDTree
 
 warnings.filterwarnings("ignore")
 
@@ -309,6 +310,28 @@ def main():
     gold = outlet_hist.merge(outlet, on="Outlet_ID", how="left")
     gold = gold.merge(coords, on="Outlet_ID", how="left")
 
+    # [IMP] Spatial Density Index (Outlet Clustering)
+    # Using KDTree on radians for fast spherical distance approximation
+    print("  Computing Spatial Density Index (Outlet Clustering)...")
+    valid_coords = coords.dropna(subset=["Latitude", "Longitude"]).copy()
+    if not valid_coords.empty:
+        rads = np.radians(valid_coords[["Latitude", "Longitude"]].values)
+        tree = KDTree(rads)
+        
+        # 1km radius in radians (approx)
+        EARTH_RADIUS_KM = 6371.0
+        radius_rad = 1.0 / EARTH_RADIUS_KM
+        
+        # Count neighbors (minus self)
+        density = [len(tree.query_ball_point(p, radius_rad)) - 1 for p in rads]
+        valid_coords["spatial_density_index"] = density
+        
+        gold = gold.merge(valid_coords[["Outlet_ID", "spatial_density_index"]], 
+                          on="Outlet_ID", how="left")
+        gold["spatial_density_index"] = gold["spatial_density_index"].fillna(0)
+    else:
+        gold["spatial_density_index"] = 0
+
     if poi_cols:
         gold = gold.merge(poi[["Outlet_ID"] + poi_cols], on="Outlet_ID", how="left")
         for c in poi_cols:
@@ -398,6 +421,12 @@ def main():
     # POI uplift: max +25% from catchment richness
     gold["poi_uplift"] = 1.0 + (gold["poi_catchment_score"] * 0.25)
 
+    # Spatial Density uplift: max +10% from being in a high-traffic cluster
+    # Scale density index to [0, 1] using 95th percentile as cap
+    density_max = gold["spatial_density_index"].quantile(0.95)
+    gold["density_score"] = (gold["spatial_density_index"] / (density_max + 1e-9)).clip(0, 1)
+    gold["density_uplift"] = 1.0 + (gold["density_score"] * 0.10)
+
     # SFA peer gap uplift: close 35% of the efficiency gap
     gold["sfa_uplift"] = (
         1.0 + np.clip(gold["peer_efficiency_gap"] - 1.0, 0, 1.5) * 0.35
@@ -409,6 +438,7 @@ def main():
         * gold["type_factor"]
         * gold["censoring_uplift"]
         * gold["poi_uplift"]
+        * gold["density_uplift"]
         * gold["sfa_uplift"]
     ).clip(upper=5.0)
 
