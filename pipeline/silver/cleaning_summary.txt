@@ -1,0 +1,59 @@
+============================================================
+SILVER LAYER - Data Cleaning & Quality Enforcement
+============================================================
+
+--- Cleaning: transactions ---
+  Loaded bronze/transactions.parquet  (2,376,389 rows)
+  Loaded bronze/outlet_master.parquet  (20,000 rows)
+    [A4] Duplicates removed: 32,240
+    [A5] Unknown Outlet_IDs: 0
+    [A6] Unknown Distributor_IDs: 0
+    [A1+A2] Negative/zero volume records: 4,740
+    [A7] Ghost invoices (zero bill, positive volume): 0
+    [A8] Future-dated transactions: 0
+    [IMP-1] Data-derived hard caps (99th percentile per type):
+       Eatery : 603.1 L
+      Bakery: 537.3 L
+      Bakry: 566.2 L
+      Eatery: 542.2 L
+      Grocery: 552.8 L
+      Grocry: 562.9 L
+      Hotel: 558.1 L
+      Kiosk: 571.3 L
+      Pharmacy: 565.6 L
+      SMMT: 547.2 L
+    [A3] Per-type volume outliers removed: 91,476
+    TOTAL rejected: 128,456 / 2,376,389 (5.41%)
+    Clean rows: 2,247,933
+
+--- Cleaning: outlet_master ---
+  Loaded bronze/outlet_master.parquet  (20,000 rows)
+    [B1] Outlet_Size imputed (flagged): 196
+    [B4] Bad Cooler_Count: 0
+    [B5] Duplicate Outlet_IDs: 0
+    TOTAL rejected: 0 / 20,000
+    Clean rows: 20,000
+
+--- Cleaning: outlet_coordinates ---
+  Loaded bronze/outlet_coordinates.parquet  (20,000 rows)
+    [C1] Out-of-bounds coordinates: 240
+    [C2] Duplicate coordinate pairs: 0
+    [C3] Duplicate Outlet_IDs: 0
+    TOTAL rejected: 240 / 20,000
+    Clean rows: 19,760
+
+--- Cleaning: distributor_seasonality ---
+  Loaded bronze/distributor_seasonality.parquet  (360 rows)
+    [D1] Null seasonality index: 0
+    [D2] Invalid Seasonality_Index values: 0
+    [D3] January 2026 not found — forward-filling from Jan 2025.
+    [D3] Jan 2026 rows added: 10
+    TOTAL rejected: 0 / 360
+    Clean rows: 370
+
+--- Cleaning: holiday_list ---
+  Loaded bronze/holiday_list.parquet  (349 rows)
+    [E1] Bad date format records: 0
+    [E2] Duplicate date entries: 273
+    TOTAL rejected: 273 / 349
+    Clean rows: 76

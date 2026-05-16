@@ -85,6 +85,23 @@ TYPE_POTENTIAL_FACTOR = {
 # Helper functions
 # ---------------------------------------------------------------------------
 
+def classify_holiday(name: str) -> float:
+    """
+    Classify holiday impact based on social/consumption signature.
+    Returns a weight: 
+      - Special (High Impact): 1.15 (Festivals, New Year)
+      - Normal (Standard Impact): 1.05 (Poya, minor religious days)
+    """
+    name = str(name).lower()
+    special_keywords = [
+        "new year", "thai pongal", "vesak", "christmas", 
+        "independence day", "ramazan", "hajji", "deepavali"
+    ]
+    if any(kw in name for kw in special_keywords):
+        return 1.15
+    return 1.05
+
+
 def peer_efficiency_gap(outlet_vol: float, peer_vols: np.ndarray,
                          frontier_pctile: int = 90) -> float:
     """
@@ -120,9 +137,38 @@ def main():
     season   = pd.read_parquet(SILVER / "distributor_seasonality.parquet")
     holidays = pd.read_parquet(SILVER / "holiday_list.parquet")
 
+    # [IMP] Calculate Weighted Holiday Impact
+    holidays["Date"] = pd.to_datetime(holidays["Date"])
+    holidays["Year"] = holidays["Date"].dt.year
+    holidays["Month"] = holidays["Date"].dt.month
+    holidays["Weight"] = holidays["Holiday_Name"].apply(classify_holiday)
+
+    # Aggregate to monthly impact score
+    monthly_holiday_impact = (
+        holidays.groupby(["Year", "Month"])["Weight"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Weight": "holiday_impact_score"})
+    )
+
+    # Average January impact (2023-2025)
+    hist_jan_impact = monthly_holiday_impact[
+        (monthly_holiday_impact["Month"] == 1) & (monthly_holiday_impact["Year"] < 2026)
+    ]["holiday_impact_score"].mean()
+
+    # Jan 2026 impact
+    jan_2026_impact = monthly_holiday_impact[
+        (monthly_holiday_impact["Year"] == 2026) & (monthly_holiday_impact["Month"] == 1)
+    ]["holiday_impact_score"].iloc[0] if not monthly_holiday_impact[
+        (monthly_holiday_impact["Year"] == 2026) & (monthly_holiday_impact["Month"] == 1)
+    ].empty else hist_jan_impact
+
+    holiday_uplift_factor = float(np.clip(jan_2026_impact / (hist_jan_impact + 1e-9), 0.95, 1.10))
+
     print(f"  Transactions: {len(tx):,}")
     print(f"  Outlets:      {len(outlet):,}")
     print(f"  Coordinates:  {len(coords):,}")
+    print(f"  Holiday Uplift (Jan 2026 vs Hist Jan): {holiday_uplift_factor:.3f}")
 
     # -----------------------------------------------------------------------
     # 2. Aggregate transactions to monthly outlet level
@@ -381,6 +427,7 @@ def main():
         * gold["potential_multiplier"]
         * gold["jan_season_factor"]
         * gold["growth_factor"]
+        * holiday_uplift_factor
     ).round(2).clip(lower=1.0)
 
     # -----------------------------------------------------------------------
